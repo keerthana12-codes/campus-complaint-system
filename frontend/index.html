@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Campus Complaint Desk — Sign In</title>
+</head>
+<body>
+
+<h1>Campus Complaint Desk</h1>
+
+<h2>Register (Student)</h2>
+<form id="registerForm">
+  <label for="regName">Full Name</label><br/>
+  <input type="text" id="regName" required /><br/><br/>
+
+  <label for="regUsername">Username</label><br/>
+  <input type="text" id="regUsername" required /><br/><br/>
+
+  <label for="regPassword">Password</label><br/>
+  <input type="password" id="regPassword" required minlength="4" /><br/><br/>
+
+  <button type="submit">Register</button>
+</form>
+<p id="regMsg"></p>
+
+<hr/>
+
+<h2>Log In</h2>
+<form id="loginForm">
+  <label for="loginUsername">Username</label><br/>
+  <input type="text" id="loginUsername" required /><br/><br/>
+
+  <label for="loginPassword">Password</label><br/>
+  <input type="password" id="loginPassword" required /><br/><br/>
+
+  <button type="submit">Log In</button>
+</form>
+
+<p id="errorMsg" style="color:red; display:none;"></p>
+
+<script>
+  // Registration
+  document.getElementById("registerForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const payload = {
+      name: document.getElementById("regName").value,
+      username: document.getElementById("regUsername").value,
+      password: document.getElementById("regPassword").value,
+    };
+
+    const res = await fetch("http://localhost:3000/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    document.getElementById("regMsg").textContent = res.ok ? data.message : data.error;
+    if (res.ok) document.getElementById("registerForm").reset();
+  });
+
+  // Login
+  document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const username = document.getElementById("loginUsername").value.trim();
+    const password = document.getElementById("loginPassword").value;
+
+    try {
+      const response = await fetch("http://localhost:3000/api/login", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Login failed");
+      }
+
+      window.location.href = "student.html";
+
+    } catch (err) {
+      const errorEl = document.getElementById("errorMsg");
+      errorEl.textContent = err.message;
+      errorEl.style.display = "block";
+    }
+  });
+</script>
+
+</body>
+</html>

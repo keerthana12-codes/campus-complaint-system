@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Student Dashboard</title>
+</head>
+<body>
+
+<h1>Student Dashboard</h1>
+<button id="logoutBtn">Log Out</button>
+
+<h2>File a New Complaint</h2>
+<form id="complaintForm">
+  <label for="cTitle">Title</label><br/>
+  <input type="text" id="cTitle" required /><br/><br/>
+
+  <label for="cCategory">Category</label><br/>
+  <select id="cCategory"></select><br/><br/>
+
+  <label for="cLocation">Location</label><br/>
+  <input type="text" id="cLocation" /><br/><br/>
+
+  <label for="cDescription">Description</label><br/>
+  <textarea id="cDescription" required></textarea><br/><br/>
+
+  <button type="submit">Submit Complaint</button>
+</form>
+
+<p id="msg"></p>
+
+<h2>My Complaints</h2>
+<div id="complaintList">Loading...</div>
+
+<script>
+  // Load categories into the dropdown
+  async function loadMeta() {
+    const res = await fetch("http://localhost:3000/api/meta");
+    const data = await res.json();
+    const select = document.getElementById("cCategory");
+    select.innerHTML = data.categories.map(c => `<option value="${c}">${c}</option>`).join("");
+  }
+
+  // Load and display this student's complaints
+  async function loadComplaints() {
+    const res = await fetch("http://localhost:3000/api/complaints", {
+      credentials: "include",
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      document.getElementById("complaintList").textContent = "Please log in first.";
+      return;
+    }
+
+    if (data.complaints.length === 0) {
+      document.getElementById("complaintList").textContent = "No complaints filed yet.";
+      return;
+    }
+
+    document.getElementById("complaintList").innerHTML = data.complaints.map(c => `
+      <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
+        <strong>${c.title}</strong> [${c.status}]<br/>
+        Category: ${c.category} | Location: ${c.location}<br/>
+        ${c.description}
+      </div>
+    `).join("");
+  }
+
+  // Handle new complaint submission
+  document.getElementById("complaintForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const payload = {
+      title: document.getElementById("cTitle").value,
+      category: document.getElementById("cCategory").value,
+      location: document.getElementById("cLocation").value,
+      description: document.getElementById("cDescription").value,
+    };
+
+    const res = await fetch("http://localhost:3000/api/complaints", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      document.getElementById("msg").textContent = data.error;
+      return;
+    }
+
+    document.getElementById("msg").textContent = "Complaint submitted!";
+    document.getElementById("complaintForm").reset();
+    loadComplaints(); // refresh the list
+  });
+
+  // Log out
+  document.getElementById("logoutBtn").addEventListener("click", async () => {
+    await fetch("http://localhost:3000/api/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+    window.location.href = "index.html";
+  });
+
+  // Run on page load
+  loadMeta();
+  loadComplaints();
+</script>
+
+</body>
+</html>
