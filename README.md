@@ -31,18 +31,24 @@ complaints, staff resolve them, and admins oversee the whole process.
 
 ## Project Structure
 campus-complaint-system/
+│
 ├── backend/
-│ ├── server.js # Express server + all API routes
-│ ├── db.js # Tiny JSON-file database helper
-│ ├── createStaff.js # One-off script to create a staff account via terminal
-│ ├── package.json
-│ └── data/db.json # Created automatically on first run (not committed)
+│   ├── data/
+│   │   └── db.json              ← auto-created; stores users & complaints
+│   ├── db.js                    ← tiny helper to read/write db.json
+│   ├── server.js                ← Express server + all API routes
+│   ├── package.json             ← lists backend dependencies
+│   └── node_modules/            ← auto-created by npm install
+│
 └── frontend/
-├── index.html # Login + student registration
-├── student.html # Student dashboard
-├── staff.html # Staff dashboard
-├── admin.html # Admin dashboard
-└── css/style.css # Shared styling for all pages
+    ├── index.html                ← login + student registration page
+    ├── student.html              ← student dashboard
+    ├── staff.html                ← staff dashboard
+    ├── admin.html                ← admin dashboard
+    ├── css/
+    │   └── style.css             ← shared styling for all pages
+    └── js/
+        └── api.js                ← shared helper for talking to the backend
 
 ## How to Run
 
