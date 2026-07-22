@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Dashboard</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<h1>Admin Dashboard</h1>
+<button id="logoutBtn">Log Out</button>
+
+<h2>Create Staff Account</h2>
+<form id="staffForm">
+  <label>Name</label><br/>
+  <input type="text" id="sName" required /><br/><br/>
+
+  <label>Department</label><br/>
+  <input type="text" id="sDept" /><br/><br/>
+
+  <label>Username</label><br/>
+  <input type="text" id="sUsername" required /><br/><br/>
+
+  <label>Password</label><br/>
+  <input type="password" id="sPassword" required minlength="4" /><br/><br/>
+
+  <button type="submit">Create Staff</button>
+</form>
+<p id="staffMsg"></p>
+
+<h2>All Complaints</h2>
+<div id="complaintList">Loading...</div>
+
+<script>
+  let allStaff = [];
+
+  // Load the list of staff members (used to build the "assign to" dropdown)
+  async function loadStaff() {
+    const res = await fetch("http://localhost:3000/api/users", { credentials: "include" });
+    const data = await res.json();
+    if (res.ok) {
+      allStaff = data.users.filter(u => u.role === "staff");
+    }
+  }
+
+  // Load every complaint in the system (admin sees all)
+  async function loadComplaints() {
+    const res = await fetch("http://localhost:3000/api/complaints", { credentials: "include" });
+    const data = await res.json();
+
+    if (!res.ok) {
+      document.getElementById("complaintList").textContent = "Please log in as admin first.";
+      return;
+    }
+
+    if (data.complaints.length === 0) {
+      document.getElementById("complaintList").textContent = "No complaints yet.";
+      return;
+    }
+
+    const staffOptions = allStaff.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
+
+    document.getElementById("complaintList").innerHTML = data.complaints.map(c => `
+      <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
+        <strong>${c.title}</strong> [${c.status}]<br/>
+        Category: ${c.category} | Location: ${c.location}<br/>
+        ${c.description}<br/><br/>
+
+        <label>Assign to:</label>
+        <select id="assign-${c.id}">
+          <option value="">-- Unassigned --</option>
+          ${staffOptions}
+        </select>
+        <button onclick="assignComplaint(${c.id})">Assign</button>
+      </div>
+    `).join("");
+  }
+
+  // Assign a complaint to the selected staff member
+  async function assignComplaint(id) {
+    const staffId = document.getElementById(`assign-${id}`).value;
+    if (!staffId) {
+      alert("Choose a staff member first.");
+      return;
+    }
+
+    const res = await fetch(`http://localhost:3000/api/complaints/${id}/assign`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ staffId }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error);
+      return;
+    }
+
+    alert("Complaint assigned!");
+    loadComplaints();
+  }
+
+  // Create a new staff account
+  document.getElementById("staffForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const payload = {
+      name: document.getElementById("sName").value,
+      department: document.getElementById("sDept").value,
+      username: document.getElementById("sUsername").value,
+      password: document.getElementById("sPassword").value,
+    };
+
+    const res = await fetch("http://localhost:3000/api/staff", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    document.getElementById("staffMsg").textContent = res.ok ? data.message : data.error;
+
+    if (res.ok) {
+      document.getElementById("staffForm").reset();
+      loadStaff(); // refresh staff list so new one shows up in dropdowns
+    }
+  });
+
+  // Log out
+  document.getElementById("logoutBtn").addEventListener("click", async () => {
+    await fetch("http://localhost:3000/api/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+    window.location.href = "index.html";
+  });
+
+  // Run on page load
+  (async () => {
+    await loadStaff();
+    await loadComplaints();
+  })();
+</script>
+
+</body>
+</html>

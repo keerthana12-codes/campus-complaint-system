@@ -186,6 +186,78 @@ app.get("/api/complaints", requireAuth, (req, res) => {
 app.get("/api/meta", (req, res) => {
   res.json({ statuses: STATUSES, categories: CATEGORIES });
 });
+// Staff or Admin updates a complaint's status and/or adds a remark
+app.put("/api/complaints/:id", requireAuth, requireRole("staff", "admin"), (req, res) => {
+  const { status, remark } = req.body;
+  const db = readDb();
+  const complaint = db.complaints.find((c) => c.id === Number(req.params.id));
+  if (!complaint) return res.status(404).json({ error: "Complaint not found" });
+
+  if (status) {
+    if (!STATUSES.includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+    complaint.status = status;
+  }
+  if (remark) {
+    complaint.remarks.push({
+      by: req.currentUser.name,
+      role: req.currentUser.role,
+      text: remark,
+      at: new Date().toISOString(),
+    });
+  }
+  complaint.updatedAt = new Date().toISOString();
+  writeDb(db);
+  res.json({ message: "Complaint updated", complaint });
+});
+
+// Admin creates a staff account
+app.post("/api/staff", requireAuth, requireRole("admin"), (req, res) => {
+  const { name, username, password, department } = req.body;
+  if (!name || !username || !password) {
+    return res.status(400).json({ error: "Name, username and password are required" });
+  }
+  const db = readDb();
+  if (db.users.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
+    return res.status(409).json({ error: "Username already taken" });
+  }
+  const hash = bcrypt.hashSync(password, 10);
+  const newStaff = {
+    id: db.nextUserId++,
+    name,
+    username,
+    password: hash,
+    role: "staff",
+    department: department || "General",
+  };
+  db.users.push(newStaff);
+  writeDb(db);
+  res.json({ message: "Staff account created", user: publicUser(newStaff) });
+});
+
+// Admin: list all users (used to populate the "assign to staff" dropdown)
+app.get("/api/users", requireAuth, requireRole("admin"), (req, res) => {
+  const db = readDb();
+  res.json({ users: db.users.map(publicUser) });
+});
+
+// Admin assigns a complaint to a staff member
+app.put("/api/complaints/:id/assign", requireAuth, requireRole("admin"), (req, res) => {
+  const { staffId } = req.body;
+  const db = readDb();
+  const complaint = db.complaints.find((c) => c.id === Number(req.params.id));
+  if (!complaint) return res.status(404).json({ error: "Complaint not found" });
+
+  const staff = db.users.find((u) => u.id === Number(staffId) && u.role === "staff");
+  if (!staff) return res.status(400).json({ error: "Invalid staff member" });
+
+  complaint.assignedStaffId = staff.id;
+  if (complaint.status === "Pending") complaint.status = "In Progress";
+  complaint.updatedAt = new Date().toISOString();
+  writeDb(db);
+  res.json({ message: "Complaint assigned", complaint });
+});
 
 app.listen(PORT, () => {
   console.log(`Campus Complaint Management System running at http://localhost:${PORT}`);

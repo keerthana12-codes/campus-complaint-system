@@ -4,12 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Campus Complaint Desk — Sign In</title>
+<link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
 
 <h1>Campus Complaint Desk</h1>
 
 <h2>Register (Student)</h2>
+<div class="card">
 <form id="registerForm">
   <label for="regName">Full Name</label><br/>
   <input type="text" id="regName" required /><br/><br/>
@@ -27,7 +29,8 @@
 <hr/>
 
 <h2>Log In</h2>
-<form id="loginForm">
+<div class="card">
+  <form id="loginForm">
   <label for="loginUsername">Username</label><br/>
   <input type="text" id="loginUsername" required /><br/><br/>
 
@@ -82,7 +85,14 @@
         throw new Error(data.error || "Login failed");
       }
 
-      window.location.href = "student.html";
+      // Send each role to its own dashboard
+      if (data.user.role === "student") {
+        window.location.href = "student.html";
+      } else if (data.user.role === "staff") {
+        window.location.href = "staff.html";
+      } else if (data.user.role === "admin") {
+        window.location.href = "admin.html";
+      }
 
     } catch (err) {
       const errorEl = document.getElementById("errorMsg");

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Staff Dashboard</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<h1>Staff Dashboard</h1>
+<button id="logoutBtn">Log Out</button>
+
+<h2>Complaints Queue</h2>
+<div id="complaintList">Loading...</div>
+
+<script>
+  let statuses = [];
+
+  // Load valid status options (for the dropdown on each complaint)
+  async function loadMeta() {
+    const res = await fetch("http://localhost:3000/api/meta");
+    const data = await res.json();
+    statuses = data.statuses;
+  }
+
+  // Load complaints assigned to this staff member (or unassigned ones)
+  async function loadComplaints() {
+    const res = await fetch("http://localhost:3000/api/complaints", {
+      credentials: "include",
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      document.getElementById("complaintList").textContent = "Please log in first.";
+      return;
+    }
+
+    if (data.complaints.length === 0) {
+      document.getElementById("complaintList").textContent = "No complaints in the queue.";
+      return;
+    }
+
+    document.getElementById("complaintList").innerHTML = data.complaints.map(c => `
+      <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
+        <strong>${c.title}</strong> [${c.status}]<br/>
+        Category: ${c.category} | Location: ${c.location}<br/>
+        ${c.description}<br/><br/>
+
+        <label>Update status:</label>
+        <select id="status-${c.id}">
+          ${statuses.map(s => `<option value="${s}" ${s === c.status ? "selected" : ""}>${s}</option>`).join("")}
+        </select>
+
+        <label>Remark:</label>
+        <input type="text" id="remark-${c.id}" placeholder="optional remark" />
+
+        <button onclick="updateComplaint(${c.id})">Update</button>
+      </div>
+    `).join("");
+  }
+
+  // Called when staff clicks "Update" on a complaint
+  async function updateComplaint(id) {
+    const status = document.getElementById(`status-${id}`).value;
+    const remark = document.getElementById(`remark-${id}`).value;
+
+    const res = await fetch(`http://localhost:3000/api/complaints/${id}`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, remark: remark || undefined }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error);
+      return;
+    }
+
+    alert("Complaint updated!");
+    loadComplaints(); // refresh the list
+  }
+
+  // Log out
+  document.getElementById("logoutBtn").addEventListener("click", async () => {
+    await fetch("http://localhost:3000/api/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+    window.location.href = "index.html";
+  });
+
+  // Run on page load
+  loadMeta();
+  loadComplaints();
+</script>
+
+</body>
+</html>
